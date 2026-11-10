@@ -578,7 +578,7 @@ const CONFIG = {
 /* =========================================================
    STATO (solo per la sessione del browser)
    ========================================================= */
-const STORE_KEY = "prism_dataroom_v1";
+const STORE_KEY = "prism_dataroom_v3";
 const store = {
   get(){ try{ return JSON.parse(sessionStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; } },
   set(v){ try{ sessionStorage.setItem(STORE_KEY, JSON.stringify(v)); }catch(e){} },
@@ -639,15 +639,15 @@ $("#pw").addEventListener("input", e => {
 
 $("#login-form").addEventListener("submit", async e => {
   e.preventDefault();
-  const pw = $("#pw").value;
+  // Normalizza: toglie spazi, trasforma trattini "lunghi" in trattino normale, ignora maiuscole/minuscole
+  const pw = $("#pw").value.trim().replace(/[\u2010-\u2015\u2212]/g, "-").toUpperCase();
   if(!pw) return;
 
   let ok = false;
   try{ ok = (await sha256(pw)) === CONFIG.PASSWORD_HASH; }
-  catch(err){
-    $("#pw-error").textContent = "Il browser non supporta la verifica sicura. Apri la pagina tramite https.";
-    return;
-  }
+  catch(err){ ok = false; }
+  // Riserva: funziona anche se il browser blocca la verifica cifrata (es. file aperto da Safari)
+  if(!ok && pw === "PRISM-4884") ok = true;
 
   if(ok){
     store.set({ ...store.get(), auth:true });
