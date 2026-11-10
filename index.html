@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>PRISM 1.0 — Data Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Librerie esterne -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+/* =========================================================
+   TOKENS
+   ========================================================= */
+:root{
+  --white:#FFFFFF;
+  --black:#000000;
+  --grey:#6B6B6B;
+  --grey-light:#BDBDBD;
+  --accent:#202475;           /* SOLO per elementi interattivi fondamentali */
+  --rule:1px solid var(--black);
+  --gutter:24px;
+  --margin:clamp(20px, 6vw, 96px);
+  --font:'Inter','Helvetica Neue',Helvetica,Arial,sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--white);
+  color:var(--black);
+  font-family:var(--font);
+  font-weight:400;
+  font-size:17px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  text-align:left;
+}
+a{color:inherit}
+button,input{font-family:inherit;font-size:inherit;color:inherit}
+
+/* =========================================================
+   GRIGLIA 12 COLONNE (invisibile)
+   ========================================================= */
+.wrap{padding:0 var(--margin);max-width:1600px}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  column-gap:var(--gutter);
+}
+.c-12{grid-column:1 / span 12}
+.c-8 {grid-column:1 / span 8}
+.c-7 {grid-column:1 / span 7}
+.c-6 {grid-column:1 / span 6}
+.c-5 {grid-column:1 / span 5}
+.c-4 {grid-column:1 / span 4}
+.c-3 {grid-column:1 / span 3}
+.c-start-4{grid-column:4 / span 9}
+.c-start-4-7{grid-column:4 / span 7}
+@media (max-width:900px){
+  .c-8,.c-7,.c-6,.c-5,.c-4,.c-3,.c-start-4,.c-start-4-7{grid-column:1 / span 12}
+}
+
+/* =========================================================
+   FILETTI (regole svizzere 1px)
+   ========================================================= */
+.rule-top{border-top:var(--rule)}
+.rule-bottom{border-bottom:var(--rule)}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+header.site{
+  padding-top:40px;
+  padding-bottom:28px;
+  border-bottom:var(--rule);
+  text-transform:uppercase;
+  font-weight:300;
+  letter-spacing:.06em;
+  font-size:14px;
+}
+header.site .grid{align-items:center;row-gap:16px}
+.meta{color:var(--black);font-weight:300}
+.meta span{display:block}
+@media (max-width:900px){ .meta{grid-column:1 / span 12} }
+
+/* Tag pills — maiuscolo, peso leggero, dimensione generosa */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:.35em;
+  padding:12px 26px;
+  border:1px solid var(--black);
+  border-radius:999px;
+  background:transparent;
+  color:var(--black);
+  text-transform:uppercase;
+  font-weight:300;
+  font-size:22px;
+  letter-spacing:.08em;
+  line-height:1;
+  cursor:default;
+  transition:background .2s ease,color .2s ease,border-color .2s ease;
+  user-select:none;
+}
+.pill:hover{background:var(--black);color:var(--white)}
+.pill--sm{font-size:16px;padding:9px 20px}
+.pills{display:flex;flex-wrap:wrap;gap:12px}
+
+/* =========================================================
+   SEZIONI / TIPOGRAFIA
+   ========================================================= */
+section.block{padding-top:72px;padding-bottom:72px}
+.label{
+  text-transform:uppercase;
+  font-weight:300;
+  font-size:13px;
+  letter-spacing:.1em;
+  color:var(--black);
+}
+h1.display{
+  font-weight:500;
+  font-size:clamp(40px,6.4vw,96px);
+  line-height:1;
+  letter-spacing:-.03em;
+  margin-top:28px;
+}
+h2.title{
+  font-weight:500;
+  font-size:clamp(28px,3.4vw,44px);
+  line-height:1.08;
+  letter-spacing:-.02em;
+}
+.lead{font-size:20px;line-height:1.5;font-weight:300;max-width:42ch}
+.muted{color:var(--grey)}
+
+/* =========================================================
+   FASI (SPA)
+   ========================================================= */
+.phase{display:none}
+.phase.is-active{display:block;animation:in .35s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* =========================================================
+   FORM
+   ========================================================= */
+.field{display:flex;flex-direction:column;gap:10px;margin-bottom:32px}
+.field label{text-transform:uppercase;font-weight:300;font-size:13px;letter-spacing:.1em}
+.input{
+  width:100%;
+  border:0;
+  border-bottom:1px solid var(--black);
+  background:transparent;
+  padding:12px 0;
+  font-size:22px;
+  font-weight:400;
+  outline:none;
+  border-radius:0;
+}
+.input::placeholder{color:var(--grey-light);font-weight:300}
+.input:focus{border-bottom:2px solid var(--black);padding-bottom:11px}
+.input.is-invalid{border-bottom-color:#B00020}
+
+.error{
+  min-height:24px;
+  font-size:14px;
+  color:#B00020;
+  margin-top:-16px;
+  margin-bottom:16px;
+}
+
+/* Bottone principale */
+.btn{
+  display:inline-flex;align-items:center;justify-content:space-between;gap:32px;
+  min-width:320px;
+  padding:22px 28px;
+  border:1px solid var(--grey-light);
+  background:var(--white);
+  color:var(--grey-light);
+  text-transform:uppercase;
+  font-weight:400;
+  font-size:16px;
+  letter-spacing:.1em;
+  cursor:not-allowed;
+  border-radius:0;
+  transition:background .2s,color .2s,border-color .2s;
+}
+.btn .arrow{font-size:22px;line-height:1}
+.btn:not(:disabled){
+  background:var(--accent);
+  border-color:var(--accent);
+  color:var(--white);
+  cursor:pointer;
+}
+.btn:not(:disabled):hover{background:var(--black);border-color:var(--black)}
+.btn.is-loading{opacity:.7;pointer-events:none}
+@media (max-width:600px){.btn{min-width:0;width:100%}}
+
+/* =========================================================
+   CHECKBOX CUSTOM — "X" netta
+   ========================================================= */
+.check{
+  display:grid;
+  grid-template-columns:36px 1fr;
+  column-gap:20px;
+  align-items:start;
+  padding:24px 0;
+  border-top:var(--rule);
+  cursor:pointer;
+}
+.check:last-of-type{border-bottom:var(--rule)}
+.check input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.check .box{
+  position:relative;
+  width:30px;height:30px;
+  border:1px solid var(--black);
+  background:var(--white);
+  margin-top:2px;
+  transition:border-color .15s;
+}
+.check .box::before,
+.check .box::after{
+  content:"";
+  position:absolute;
+  left:50%;top:50%;
+  width:38px;height:2px;
+  background:var(--accent);
+  transform:translate(-50%,-50%) rotate(45deg) scaleX(0);
+  transition:transform .18s ease;
+}
+.check .box::after{transform:translate(-50%,-50%) rotate(-45deg) scaleX(0)}
+.check input:checked + .box{border-color:var(--accent)}
+.check input:checked + .box::before{transform:translate(-50%,-50%) rotate(45deg) scaleX(1)}
+.check input:checked + .box::after{transform:translate(-50%,-50%) rotate(-45deg) scaleX(1)}
+.check input:focus-visible + .box{outline:2px solid var(--accent);outline-offset:3px}
+.check .num{display:block;text-transform:uppercase;font-weight:300;font-size:13px;letter-spacing:.1em;margin-bottom:6px}
+.check .txt{font-size:18px;line-height:1.5}
+
+/* =========================================================
+   TESTO NDA
+   ========================================================= */
+.nda{counter-reset:art}
+.nda article{
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  column-gap:var(--gutter);
+  padding:32px 0;
+  border-top:var(--rule);
+}
+.nda article:last-child{border-bottom:var(--rule)}
+.nda h3{
+  grid-column:1 / span 3;
+  text-transform:uppercase;
+  font-weight:300;
+  font-size:14px;
+  letter-spacing:.1em;
+}
+.nda .body{grid-column:4 / span 7;font-size:17px;line-height:1.65}
+.nda .body p + p{margin-top:12px}
+@media (max-width:900px){
+  .nda h3,.nda .body{grid-column:1 / span 12}
+  .nda h3{margin-bottom:12px}
+}
+
+/* =========================================================
+   TABELLA DOCUMENTI
+   ========================================================= */
+.table{width:100%;border-collapse:collapse;margin-top:40px}
+.table th{
+  text-align:left;
+  text-transform:uppercase;
+  font-weight:300;
+  font-size:13px;
+  letter-spacing:.1em;
+  padding:16px 16px 16px 0;
+  border-top:var(--rule);
+  border-bottom:var(--rule);
+}
+.table td{
+  padding:28px 16px 28px 0;
+  border-bottom:var(--rule);
+  vertical-align:middle;
+  font-size:18px;
+}
+.table td.file{font-weight:500;font-size:20px}
+.table td.file small{display:block;font-weight:300;font-size:14px;color:var(--grey);margin-top:4px}
+.table td.ver,.table td.date{font-variant-numeric:tabular-nums}
+.table th.act,.table td.act{text-align:left;width:1%;white-space:nowrap;padding-right:0}
+.dl{
+  display:inline-flex;align-items:center;gap:14px;
+  text-decoration:none;
+  text-transform:uppercase;
+  font-size:14px;
+  letter-spacing:.1em;
+  color:var(--accent);
+  padding:12px 20px;
+  border:1px solid var(--accent);
+  transition:background .2s,color .2s;
+}
+.dl svg{width:18px;height:18px;stroke:currentColor}
+.dl:hover{background:var(--accent);color:var(--white)}
+.dl.is-disabled{color:var(--grey-light);border-color:var(--grey-light);pointer-events:none}
+
+@media (max-width:760px){
+  .table thead{display:none}
+  .table,.table tbody,.table tr,.table td{display:block;width:100%}
+  .table tr{border-bottom:var(--rule);padding:20px 0}
+  .table td{border:0;padding:4px 0}
+  .table td.ver::before{content:"VERSIONE — ";font-weight:300;font-size:13px;letter-spacing:.1em}
+  .table td.date::before{content:"CARICATO — ";font-weight:300;font-size:13px;letter-spacing:.1em}
+  .table td.act{padding-top:16px}
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+footer.site{
+  border-top:var(--rule);
+  padding-top:28px;padding-bottom:40px;
+  text-transform:uppercase;font-weight:300;font-size:13px;letter-spacing:.1em;
+}
+footer.site .grid{row-gap:12px}
+
+.signed-as{margin-top:24px}
+.signed-as strong{font-weight:500}
+.link-btn{
+  background:none;border:0;padding:0;cursor:pointer;
+  text-transform:uppercase;font-weight:300;font-size:13px;letter-spacing:.1em;
+  border-bottom:1px solid var(--black);
+}
+.link-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+/* Accessibilità */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+
+<body>
+
+<!-- =========================================================
+     HEADER
+     ========================================================= -->
+<header class="site">
+  <div class="wrap grid">
+    <div class="c-3"><span class="pill">[ PRISM 1.0 ]</span></div>
+    <div class="meta" style="grid-column:4 / span 3"><span>DATA ROOM PRIVATA</span><span>ACCESSO RISERVATO</span></div>
+    <div class="meta" style="grid-column:7 / span 3"><span>CLICKWRAP NDA</span><span>ACCORDO DI VISIONE</span></div>
+    <div class="meta" style="grid-column:10 / span 3"><span id="phase-indicator">FASE 01 / 03</span><span>TEAM PRISM</span></div>
+  </div>
+</header>
+
+<main>
+
+<!-- =========================================================
+     FASE 1 — LOGIN GATE
+     ========================================================= -->
+<section class="phase is-active" id="phase-login" aria-labelledby="t-login">
+  <div class="wrap">
+    <section class="block grid">
+      <div class="c-3"><p class="label">01 — ACCESSO</p></div>
+      <div class="c-start-4">
+        <h1 class="display" id="t-login" style="margin-top:0">Data Room<br>PRISM 1.0</h1>
+        <p class="lead" style="margin-top:32px">Portale riservato agli stakeholder del progetto. Inserisci la password che ti è stata comunicata dal team.</p>
+
+        <form id="login-form" style="margin-top:64px;max-width:560px" novalidate>
+          <div class="field">
+            <label for="pw">PASSWORD</label>
+            <input class="input" id="pw" type="password" autocomplete="current-password" placeholder="••••••••" required>
+          </div>
+          <p class="error" id="pw-error" role="alert"></p>
+          <button class="btn" id="login-btn" type="submit" disabled>
+            <span>ACCEDI</span><span class="arrow" aria-hidden="true">→</span>
+          </button>
+        </form>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- =========================================================
+     FASE 2 — GATEWAY NDA
+     ========================================================= -->
+<section class="phase" id="phase-nda" aria-labelledby="t-nda">
+  <div class="wrap">
+
+    <section class="block grid">
+      <div class="c-3"><p class="label">02 — ACCORDO</p></div>
+      <div class="c-start-4">
+        <div class="pills" style="margin-bottom:32px">
+          <span class="pill pill--sm">[ NDA ]</span>
+          <span class="pill pill--sm">[ PROPRIETÀ INTELLETTUALE ]</span>
+          <span class="pill pill--sm">[ EMBARGO ]</span>
+        </div>
+        <h2 class="title" id="t-nda">Accordo di visione e di riservatezza sulla proprietà intellettuale di PRISM 1.0</h2>
+        <p class="lead" style="margin-top:24px">Leggi integralmente il testo. L'accesso ai documenti è concesso solo dopo la firma digitale in fondo alla pagina.</p>
+      </div>
+    </section>
+
+    <!-- Testo legale -->
+    <div class="nda">
+      <article>
+        <h3>Art. 1 — Parti</h3>
+        <div class="body">
+          <p>Il presente accordo è concluso tra il Team PRISM (di seguito «il Team»), titolare dei materiali di progetto, e la persona che appone la propria firma digitale in calce (di seguito «il Visionatore»).</p>
+        </div>
+      </article>
+      <article>
+        <h3>Art. 2 — Oggetto</h3>
+        <div class="body">
+          <p>Il Team concede al Visionatore l'accesso temporaneo e personale ai materiali di progetto PRISM 1.0 (a titolo esemplificativo: business plan, pitch deck, render 3D, documentazione tecnica, visual, dati economici), al solo scopo di valutazione del progetto.</p>
+        </div>
+      </article>
+      <article>
+        <h3>Art. 3 — Paternità dell'idea</h3>
+        <div class="body">
+          <p>L'idea fondante e il concept originale di PRISM, presentati nell'ambito della Call for Needs Resolution Fashion 3.0 (marzo 2026), sono di esclusiva ideazione di Michelle Chicherio.</p>
+          <p>L'evoluzione estetica, formale, tecnologica, di business e comunicativa di PRISM 1.0 è opera esclusiva del Team PRISM, composto dai team visual, tech ed economics.</p>
+        </div>
+      </article>
+      <article>
+        <h3>Art. 4 — Riservatezza</h3>
+        <div class="body">
+          <p>Il Visionatore si impegna a mantenere strettamente riservati tutti i materiali e le informazioni a cui ha accesso, a non divulgarli a terzi, a non copiarli, riprodurli, fotografarli o diffonderli in alcuna forma, e a non utilizzarli per scopi diversi dalla valutazione del progetto.</p>
+        </div>
+      </article>
+      <article>
+        <h3>Art. 5 — Divieto di sfruttamento</h3>
+        <div class="body">
+          <p>Il Visionatore si impegna a non sviluppare, registrare, presentare o sfruttare commercialmente, direttamente o tramite terzi, idee, concept, design, modelli di business o soluzioni tecniche derivati dai materiali visionati.</p>
+        </div>
+      </article>
+      <article>
+        <h3>Art. 6 — Embargo e durata</h3>
+        <div class="body">
+          <p>Gli obblighi del presente accordo decorrono dalla firma e restano validi fino a quando il Team non avrà reso pubblici i materiali in modo ufficiale, e in ogni caso per almeno tre anni dalla data di firma.</p>
+        </div>
+      </article>
+      <article>
+        <h3>Art. 7 — Tracciamento</h3>
+        <div class="body">
+          <p>Il Visionatore prende atto che nome, cognome, indirizzo email, data e ora della firma e le dichiarazioni confermate vengono registrati e conservati dal Team come prova dell'accettazione del presente accordo. I dati non vengono ceduti a terzi.</p>
+        </div>
+      </article>
+      <article>
+        <h3>Art. 8 — Diritto applicabile</h3>
+        <div class="body">
+          <p>Il presente accordo è regolato dal diritto svizzero. Foro competente: Lugano.</p>
+        </div>
+      </article>
+    </div>
+
+    <!-- Firma digitale -->
+    <section class="block grid">
+      <div class="c-3"><p class="label">03 — FIRMA DIGITALE</p></div>
+      <div class="c-start-4">
+        <form id="sign-form" novalidate>
+          <div class="grid" style="column-gap:var(--gutter)">
+            <div class="field" style="grid-column:span 6">
+              <label for="nome">NOME</label>
+              <input class="input" id="nome" type="text" autocomplete="given-name" required>
+            </div>
+            <div class="field" style="grid-column:span 6">
+              <label for="cognome">COGNOME</label>
+              <input class="input" id="cognome" type="text" autocomplete="family-name" required>
+            </div>
+            <div class="field" style="grid-column:span 12">
+              <label for="email">INDIRIZZO EMAIL</label>
+              <input class="input" id="email" type="email" autocomplete="email" required>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;margin-bottom:48px">
+            <label class="check">
+              <input type="checkbox" id="chk1" required>
+              <span class="box" aria-hidden="true"></span>
+              <span><span class="num">DICHIARAZIONE 01</span><span class="txt">Confermo di aver compreso che l'idea fondante e il concept originale di PRISM (Call for Needs Resolution Fashion 3.0, marzo 2026) sono di esclusiva ideazione di Michelle Chicherio.</span></span>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="chk2" required>
+              <span class="box" aria-hidden="true"></span>
+              <span><span class="num">DICHIARAZIONE 02</span><span class="txt">Confermo che l'evoluzione estetica, formale, tecnologica, di business e comunicativa di PRISM 1.0 è opera esclusiva del Team PRISM (Team visual, tech, economics).</span></span>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="chk3" required>
+              <span class="box" aria-hidden="true"></span>
+              <span><span class="num">DICHIARAZIONE 03</span><span class="txt">Accetto il rigoroso vincolo di riservatezza e l'embargo sulla divulgazione di questi materiali.</span></span>
+            </label>
+          </div>
+
+          <p class="error" id="sign-error" role="alert"></p>
+          <button class="btn" id="sign-btn" type="submit" disabled>
+            <span>FIRMA E ACCEDI AI DOCUMENTI</span><span class="arrow" aria-hidden="true">→</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </div>
+</section>
+
+<!-- =========================================================
+     FASE 3 — DASHBOARD DOCUMENTALE
+     ========================================================= -->
+<section class="phase" id="phase-docs" aria-labelledby="t-docs">
+  <div class="wrap">
+    <section class="block grid">
+      <div class="c-3"><p class="label">04 — DOCUMENTI</p></div>
+      <div class="c-start-4">
+        <h2 class="title" id="t-docs">Materiali di progetto</h2>
+        <p class="signed-as label">FIRMATO DA <strong id="signed-name">—</strong> · <span id="signed-date">—</span></p>
+
+        <table class="table" aria-describedby="t-docs">
+          <thead>
+            <tr>
+              <th scope="col">TITOLO FILE</th>
+              <th scope="col">VERSIONE</th>
+              <th scope="col">DATA DI CARICAMENTO</th>
+              <th scope="col" class="act">AZIONE</th>
+            </tr>
+          </thead>
+          <tbody id="docs-body"></tbody>
+        </table>
+
+        <p style="margin-top:40px"><button class="link-btn" id="logout-btn" type="button">ESCI DALLA DATA ROOM</button></p>
+      </div>
+    </section>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap grid">
+    <div class="c-3">PRISM 1.0 © 2026</div>
+    <div style="grid-column:4 / span 6">MATERIALI RISERVATI — VIETATA LA DIVULGAZIONE</div>
+    <div style="grid-column:10 / span 3">DESIGN KIKERIO_DESIGN</div>
+  </div>
+</footer>
+
+<script>
+/* =========================================================
+   CONFIGURAZIONE — compila questi valori (vedi GUIDA.md)
+   ========================================================= */
+const CONFIG = {
+  // SHA-256 della password del portale. Password di esempio: PRISM2026
+  // Per cambiarla: vedi GUIDA.md, passo 4.
+  PASSWORD_HASH: "e96a8c02c066bb20a7f11df9d7eb610eaddd8ae731e37c01e3bc5c016d14f9a7",
+
+  EMAILJS: {
+    PUBLIC_KEY:  "fxz_2gz8Br_UKRnUC",
+    SERVICE_ID:  "service_jx2l465",
+    TEMPLATE_ID: "template_tcyjs8a",
+    TO_EMAIL:    "kikeriodesign@gmail.com"
+  },
+
+  SUPABASE: {
+    URL:      "https://ogdjvafuduqshvapspss.supabase.co",
+    ANON_KEY: "sb_publishable_kSRwaNwOyPuqlZ7sWULdQg_vUpLH7Yq",
+    TABLE:    "nda_signatures"
+  },
+
+  // Elenco documenti mostrati nella dashboard
+  DOCUMENTS: [
+    { title:"Business Plan",        note:"Modello economico e proiezioni",   version:"v1.2", date:"2026-11-04", url:"https://drive.google.com/file/d/1gd3sx7cEWBLebNZhPb8NcSsgdivVGL23/view?usp=drive_link" },
+    { title:"Pitch Deck",           note:"Presentazione per stakeholder",    version:"v2.0", date:"2026-11-08", url:"#" },
+    { title:"Render 3D",            note:"Visualizzazioni del prodotto",     version:"v1.0", date:"2026-10-28", url:"#" },
+    { title:"Brand & Visual Book",  note:"Identità visiva e linee guida",    version:"v1.1", date:"2026-10-30", url:"#" },
+    { title:"Documentazione tecnica", note:"Architettura e tecnologia",      version:"v0.9", date:"2026-11-02", url:"#" }
+  ]
+};
+
+/* =========================================================
+   STATO (solo per la sessione del browser)
+   ========================================================= */
+const STORE_KEY = "prism_dataroom_v1";
+const store = {
+  get(){ try{ return JSON.parse(sessionStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; } },
+  set(v){ try{ sessionStorage.setItem(STORE_KEY, JSON.stringify(v)); }catch(e){} },
+  clear(){ try{ sessionStorage.removeItem(STORE_KEY); }catch(e){} }
+};
+
+/* =========================================================
+   UTIL
+   ========================================================= */
+const $ = (s) => document.querySelector(s);
+
+async function sha256(text){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+function isEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); }
+
+function formatDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString("it-CH", { day:"2-digit", month:"2-digit", year:"numeric" });
+}
+
+function formatDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleString("it-CH", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function isConfigured(val){ return val && !/^(LA_TUA|IL_TUO|https:\/\/IL-TUO)/.test(val); }
+
+/* =========================================================
+   NAVIGAZIONE TRA LE FASI
+   ========================================================= */
+const PHASES = { login:"#phase-login", nda:"#phase-nda", docs:"#phase-docs" };
+const PHASE_NUM = { login:"01", nda:"02", docs:"03" };
+
+function goTo(name){
+  document.querySelectorAll(".phase").forEach(p => p.classList.remove("is-active"));
+  $(PHASES[name]).classList.add("is-active");
+  $("#phase-indicator").textContent = `FASE ${PHASE_NUM[name]} / 03`;
+  window.scrollTo({ top:0, behavior:"instant" in window ? "instant" : "auto" });
+  if(name === "login") setTimeout(() => $("#pw").focus(), 50);
+  if(name === "docs") renderDocs();
+}
+
+/* =========================================================
+   FASE 1 — LOGIN
+   ========================================================= */
+$("#pw").addEventListener("input", e => {
+  $("#login-btn").disabled = e.target.value.length === 0;
+  $("#pw-error").textContent = "";
+  e.target.classList.remove("is-invalid");
+});
+
+$("#login-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const pw = $("#pw").value;
+  if(!pw) return;
+
+  let ok = false;
+  try{ ok = (await sha256(pw)) === CONFIG.PASSWORD_HASH; }
+  catch(err){
+    $("#pw-error").textContent = "Il browser non supporta la verifica sicura. Apri la pagina tramite https.";
+    return;
+  }
+
+  if(ok){
+    store.set({ ...store.get(), auth:true });
+    $("#pw").value = "";
+    goTo("nda");
+  }else{
+    $("#pw").classList.add("is-invalid");
+    $("#pw-error").textContent = "Password non corretta.";
+  }
+});
+
+/* =========================================================
+   FASE 2 — FIRMA NDA
+   ========================================================= */
+const signFields = ["#nome","#cognome","#email","#chk1","#chk2","#chk3"];
+
+function signFormValid(){
+  return $("#nome").value.trim().length > 1
+      && $("#cognome").value.trim().length > 1
+      && isEmail($("#email").value)
+      && $("#chk1").checked && $("#chk2").checked && $("#chk3").checked;
+}
+
+signFields.forEach(sel => {
+  const el = $(sel);
+  const evt = el.type === "checkbox" ? "change" : "input";
+  el.addEventListener(evt, () => {
+    $("#sign-btn").disabled = !signFormValid();
+    $("#sign-error").textContent = "";
+  });
+});
+
+/* --- Supabase --- */
+let supabaseClient = null;
+function getSupabase(){
+  if(supabaseClient) return supabaseClient;
+  if(!isConfigured(CONFIG.SUPABASE.URL) || !isConfigured(CONFIG.SUPABASE.ANON_KEY) || !window.supabase) return null;
+  supabaseClient = window.supabase.createClient(CONFIG.SUPABASE.URL, CONFIG.SUPABASE.ANON_KEY);
+  return supabaseClient;
+}
+
+async function saveToSupabase(rec){
+  const sb = getSupabase();
+  if(!sb){ console.warn("[PRISM] Supabase non configurato: firma non salvata."); return { skipped:true }; }
+  const { error } = await sb.from(CONFIG.SUPABASE.TABLE).insert([{
+    nome:            rec.nome,
+    cognome:         rec.cognome,
+    email:           rec.email,
+    signed_at:       rec.signed_at,
+    chk_concept:     rec.chk1,
+    chk_team:        rec.chk2,
+    chk_riservatezza:rec.chk3,
+    user_agent:      navigator.userAgent.slice(0,300)
+  }]);
+  if(error) throw error;
+  return { ok:true };
+}
+
+/* --- EmailJS --- */
+function sendEmail(rec){
+  const E = CONFIG.EMAILJS;
+  if(!isConfigured(E.PUBLIC_KEY) || !isConfigured(E.SERVICE_ID) || !isConfigured(E.TEMPLATE_ID) || !window.emailjs){
+    console.warn("[PRISM] EmailJS non configurato: email non inviata.");
+    return Promise.resolve({ skipped:true });
+  }
+  const fullName = `${rec.nome} ${rec.cognome}`;
+  return emailjs.send(E.SERVICE_ID, E.TEMPLATE_ID, {
+    to_email:   E.TO_EMAIL,
+    full_name:  fullName,
+    nome:       rec.nome,
+    cognome:    rec.cognome,
+    email:      rec.email,
+    signed_at:  formatDateTime(rec.signed_at),
+    message:    `Il signor ${fullName} ha firmato l'NDA e ha avuto accesso ai file`
+  }, { publicKey: E.PUBLIC_KEY });
+}
+
+$("#sign-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  if(!signFormValid()) return;
+
+  const btn = $("#sign-btn");
+  btn.classList.add("is-loading");
+  btn.querySelector("span").textContent = "REGISTRAZIONE FIRMA…";
+
+  const rec = {
+    nome:      $("#nome").value.trim(),
+    cognome:   $("#cognome").value.trim(),
+    email:     $("#email").value.trim().toLowerCase(),
+    signed_at: new Date().toISOString(),
+    chk1: $("#chk1").checked,
+    chk2: $("#chk2").checked,
+    chk3: $("#chk3").checked
+  };
+
+  try{
+    // 1) Il salvataggio nel database è obbligatorio: senza registrazione niente accesso
+    await saveToSupabase(rec);
+    // 2) La notifica email non blocca l'accesso se fallisce
+    sendEmail(rec).catch(err => console.error("[PRISM] Errore EmailJS:", err));
+
+    store.set({ auth:true, signed:true, name:`${rec.nome} ${rec.cognome}`, signed_at:rec.signed_at });
+    goTo("docs");
+  }catch(err){
+    console.error("[PRISM] Errore Supabase:", err);
+    $("#sign-error").textContent = "Non è stato possibile registrare la firma. Riprova tra qualche istante.";
+  }finally{
+    btn.classList.remove("is-loading");
+    btn.querySelector("span").textContent = "FIRMA E ACCEDI AI DOCUMENTI";
+  }
+});
+
+/* =========================================================
+   FASE 3 — DASHBOARD
+   ========================================================= */
+const DL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" aria-hidden="true"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>';
+
+function renderDocs(){
+  const s = store.get();
+  $("#signed-name").textContent = (s.name || "—").toUpperCase();
+  $("#signed-date").textContent = s.signed_at ? formatDateTime(s.signed_at) : "—";
+
+  $("#docs-body").innerHTML = CONFIG.DOCUMENTS.map(d => {
+    const available = d.url && d.url !== "#";
+    return `
+      <tr>
+        <td class="file">${escapeHTML(d.title)}${d.note ? `<small>${escapeHTML(d.note)}</small>` : ""}</td>
+        <td class="ver">${escapeHTML(d.version)}</td>
+        <td class="date">${formatDate(d.date)}</td>
+        <td class="act">
+          <a class="dl ${available ? "" : "is-disabled"}" href="${available ? escapeHTML(d.url) : "#"}"
+             ${available ? 'target="_blank" rel="noopener" download' : 'aria-disabled="true"'}>
+            ${DL_ICON}<span>${available ? "SCARICA" : "IN ARRIVO"}</span>
+          </a>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+$("#logout-btn").addEventListener("click", () => {
+  store.clear();
+  ["#nome","#cognome","#email"].forEach(s => $(s).value = "");
+  ["#chk1","#chk2","#chk3"].forEach(s => $(s).checked = false);
+  $("#sign-btn").disabled = true;
+  $("#login-btn").disabled = true;
+  goTo("login");
+});
+
+/* =========================================================
+   AVVIO — riprende la sessione se la pagina viene ricaricata
+   ========================================================= */
+(function init(){
+  const s = store.get();
+  if(s.signed) goTo("docs");
+  else if(s.auth) goTo("nda");
+  else goTo("login");
+})();
+</script>
+</body>
+</html>
